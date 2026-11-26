@@ -78,11 +78,14 @@ jobs:
         #   running that test alone). Update that expectation and remove the
         #   --skip.
         run: |
+          nproc
+          cat /sys/fs/cgroup/cpu.max
           cargo test --workspace --exclude rune-cli --no-fail-fast -- \
             --skip gpu_finishes_all_counted_windows \
             --skip test_fft_cpu_vs_gpu \
             --skip wgpu_fft:: \
-            --skip subsonic_open_search_fetch_and_unsupported_requests
+            --skip subsonic_open_search_fetch_and_unsupported_requests --show-output 2>&1 |
+            awk '/test fixture (started|finished):.*::rr_reconnect_|^test step.*::rr_reconnect_|^test result:|FAILED|^error:/ { print; fflush() }'
 
   flutter-analyze:
     name: Flutter Analyze
