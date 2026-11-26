@@ -78,9 +78,9 @@ jobs:
         #   running that test alone). Update that expectation and remove the
         #   --skip.
         run: |
+          set -o pipefail
           nproc
-          cat /sys/fs/cgroup/cpu.max
-          cargo test --workspace --exclude rune-cli --no-fail-fast -- \
+          CARGO_TERM_COLOR=never cargo test --workspace --exclude rune-cli --no-fail-fast -- \
             --skip gpu_finishes_all_counted_windows \
             --skip test_fft_cpu_vs_gpu \
             --skip wgpu_fft:: \
