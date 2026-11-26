@@ -848,7 +848,19 @@ pub async fn generate_or_load_certificates<P: AsRef<Path>>(
         let (_, fingerprint) = parse_certificate(&cert)?;
         Ok((fingerprint, cert, private_key))
     } else {
+        #[cfg(test)]
+        let certificate_trace = lifecycle_tests::reconnect_test_name().map(|test| {
+            eprintln!("test fixture started: {test}: generate TLS certificate");
+            (test, std::time::Instant::now())
+        });
         let cert = generate_self_signed_cert(certificate_id, "Rune Player", "NET", 3650)?;
+        #[cfg(test)]
+        if let Some((test, started)) = certificate_trace {
+            eprintln!(
+                "test fixture finished: {test}: generate TLS certificate ({:?})",
+                started.elapsed()
+            );
+        }
 
         tokio_fs::write(&cert_path, &cert.certificate)
             .await
@@ -1104,6 +1116,13 @@ mod lifecycle_tests {
         global_params: Arc<GlobalParams>,
     }
 
+    pub(super) fn reconnect_test_name() -> Option<String> {
+        thread::current()
+            .name()
+            .filter(|name| name.contains("::rr_reconnect_"))
+            .map(str::to_owned)
+    }
+
     async fn open_remote_control_record(
         node: Arc<NodeContext>,
         fingerprint: &str,
@@ -1310,8 +1329,26 @@ mod lifecycle_tests {
     ) -> Result<Fixture> {
         use database::credentials::CredentialStore;
 
+        let test = reconnect_test_name();
+        let mut previous_phase: Option<(&str, std::time::Instant)> = None;
+        let mut trace_phase = |next: Option<&'static str>| {
+            let Some(test) = &test else { return };
+            if let Some((name, started)) = previous_phase {
+                eprintln!(
+                    "test fixture finished: {test}: {name} ({:?})",
+                    started.elapsed()
+                );
+            }
+            previous_phase = next.map(|name| {
+                eprintln!("test fixture started: {test}: {name}");
+                (name, std::time::Instant::now())
+            });
+        };
+
+        trace_phase(Some("create node identity"));
         fs::create_dir_all(dir.join(".rune"))?;
         let node = get_or_create_node_id(dir.to_str().context("config path")?).await?;
+        trace_phase(Some("initialize credentials and library pool"));
         let credentials = Arc::new(CredentialStore::open(dir));
         let pool = LibraryPool::with_idle_timeout_and_credentials(
             dir,
@@ -1320,7 +1357,9 @@ mod lifecycle_tests {
             idle_timeout,
             credentials,
         )?;
+        trace_phase(Some("initialize migration node ID"));
         let _ = migration::initialize_node_id(node.to_string());
+        trace_phase(Some("update library registry"));
         LibraryRegistry::update(dir, |registry| {
             registry.libraries.push(LibraryRecord {
                 record_id: LibraryRecordId(Uuid::new_v4()),
@@ -1336,8 +1375,11 @@ mod lifecycle_tests {
             Ok(())
         })
         .await?;
+        trace_phase(Some("open UI library"));
         let library = pool.acquire_ui(library_id).await?;
+        trace_phase(Some("disable sync listener"));
         crate::test_node::disable_sync_listener(dir)?;
+        trace_phase(Some("initialize node context"));
         let node_context = NodeContext::with_reconnect_config(
             dir.to_str().context("config path")?,
             dir.to_str().context("db path")?,
@@ -1350,7 +1392,10 @@ mod lifecycle_tests {
             services,
         )
         .await?;
-        fixture_from_library(node_context, library).await
+        trace_phase(Some("attach fixture UI"));
+        let fixture = fixture_from_library(node_context, library).await?;
+        trace_phase(None);
+        Ok(fixture)
     }
 
     async fn fixture_open_record(source: &Fixture, record_id: String) -> Result<Fixture> {
