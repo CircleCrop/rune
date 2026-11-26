@@ -198,7 +198,8 @@ pub struct LibraryRecordSummary {
     pub record_id: String,
     pub alias: String,
     pub kind: LibraryRecordKindSummary,
-    pub background_sync: Option<bool>,
+    /// Whether the library is stored in a shared folder, which it can be synced with on request.
+    pub share_sync: bool,
     pub connection_access: Option<LibraryConnectionAccessSummary>,
     pub sync_access: Option<LibraryAccessSummary>,
 }
@@ -217,7 +218,6 @@ pub enum InvalidRecordReasonSummary {
     ReplicaInvalid,
     RemoteControlInvalid,
     SubsonicInvalid,
-    BackgroundSyncWithoutCatalog,
     DuplicateLibraryId,
     OpenDalInvalid,
 }
@@ -229,7 +229,6 @@ impl From<InvalidRecord> for InvalidRecordReasonSummary {
             InvalidRecord::ReplicaInvalid => Self::ReplicaInvalid,
             InvalidRecord::RemoteControlInvalid => Self::RemoteControlInvalid,
             InvalidRecord::SubsonicInvalid => Self::SubsonicInvalid,
-            InvalidRecord::BackgroundSyncWithoutCatalog => Self::BackgroundSyncWithoutCatalog,
             InvalidRecord::DuplicateLibraryId => Self::DuplicateLibraryId,
             InvalidRecord::OpenDalInvalid => Self::OpenDalInvalid,
         }
@@ -300,8 +299,7 @@ impl From<&LibraryRecord> for LibraryRecordSummary {
             record_id: record.record_id.0.to_string(),
             alias: record.alias.clone(),
             kind,
-            background_sync: (record.catalog != CatalogPlacement::None)
-                .then(|| record.background_sync()),
+            share_sync: matches!(record.catalog, CatalogPlacement::InShare(_)),
             connection_access: record.connection_access().map(Into::into),
             sync_access: record.access_level().map(Into::into),
         }

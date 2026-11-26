@@ -646,7 +646,6 @@ async fn subsonic_open_search_fetch_and_unsupported_requests() -> Result<()> {
         },
         fs: Vec::new(),
         catalog: CatalogPlacement::None,
-        background_sync: false,
     };
     LibraryRegistry::update(Path::new(&*node.config_path), |registry| {
         registry.libraries.push(record.clone());
@@ -1115,7 +1114,6 @@ async fn subsonic_open_search_fetch_and_unsupported_requests() -> Result<()> {
         },
         fs: Vec::new(),
         catalog: CatalogPlacement::None,
-        background_sync: false,
     };
     LibraryRegistry::update(Path::new(&*node.config_path), |registry| {
         registry.libraries.push(bad_record.clone());
@@ -1162,7 +1160,6 @@ async fn subsonic_open_search_fetch_and_unsupported_requests() -> Result<()> {
         },
         fs: Vec::new(),
         catalog: CatalogPlacement::None,
-        background_sync: false,
     };
     LibraryRegistry::update(Path::new(&*node.config_path), |registry| {
         registry.libraries.push(closed_record.clone());
@@ -2152,7 +2149,6 @@ async fn a_subsonic_jukebox_is_followed_once_the_server_check_grants_its_role() 
         },
         fs: Vec::new(),
         catalog: CatalogPlacement::None,
-        background_sync: false,
     };
     LibraryRegistry::update(Path::new(&*node.config_path), |registry| {
         registry.libraries.push(record.clone());
@@ -2257,7 +2253,6 @@ async fn a_service_record_whose_folder_cannot_be_deleted_is_still_removed() -> R
         },
         fs: Vec::new(),
         catalog: CatalogPlacement::None,
-        background_sync: false,
     };
     LibraryRegistry::update(Path::new(&*node.config_path), |registry| {
         registry.libraries.push(record.clone());
@@ -2787,7 +2782,6 @@ async fn setting_liked_on_a_read_only_replica_returns_a_typed_error() -> Result<
                 fingerprint: owner_fingerprint.into(),
             }],
             catalog: CatalogPlacement::ConfigReplica,
-            background_sync: false,
         });
         Ok(())
     })
@@ -14885,7 +14879,6 @@ async fn library_records_register_open_and_preserve_previous_ui_on_failure() -> 
             fingerprint: unreachable.clone(),
         }],
         catalog: CatalogPlacement::ConfigReplica,
-        background_sync: true,
     };
     LibraryRegistry::update(PathBuf::from(&*node.config_path).as_path(), |registry| {
         registry.libraries.push(missing_replica.clone());
@@ -14921,7 +14914,6 @@ async fn library_records_register_open_and_preserve_previous_ui_on_failure() -> 
         },
         fs: Vec::new(),
         catalog: CatalogPlacement::None,
-        background_sync: false,
     };
     LibraryRegistry::update(PathBuf::from(&*node.config_path).as_path(), |registry| {
         registry.libraries.push(subsonic.clone());
@@ -14983,7 +14975,7 @@ async fn library_records_register_open_and_preserve_previous_ui_on_failure() -> 
         .find(|record| record.record_id == record_id)
         .context("local record summary")?;
     assert_eq!(local_summary.alias, "Selected");
-    assert_eq!(local_summary.background_sync, Some(true));
+    assert!(!local_summary.share_sync);
     assert!(matches!(
         &local_summary.kind,
         LibraryRecordKindSummary::Local { path, .. } if path == &selected.to_string_lossy()
